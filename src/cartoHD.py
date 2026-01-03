@@ -168,17 +168,16 @@ def contour_type_field(input_file, layer_name, output_file=None):
 
 
 def compress_tiff(file, compress="LZW"):
-    #run_command(["gdalwarp", "-overwrite", "-of", "GTiff", "-co", "COMPRESS=LZW", file, file])
-    run_command(["gdal_translate", "-of", "GTiff", "-co", "COMPRESS="+compress, file, "aaaaahgvhgv.tif"])
-    run_command(["mv", "aaaaahgvhgv.tif", file])
-    # LZW, DEFLATE, ZSTD, JPEG, PACKBITS
+    tmp = "aaaaahgvhgv.tif"
+    run_command(["gdal_translate", "-of", "GTiff", "-co", "COMPRESS="+compress, file, tmp])
+    os.replace(tmp, file)
 
 
 
 
 
 
-def compute_rayshading(input_file: str, output_file: str, light_azimuth: float = 315, light_altitude: float = 30, ray_max_length: int = None, jump: int = 1, show_progress: bool = False):
+def compute_rayshading(input_file: str, output_file: str, light_azimuth: float = 315, light_altitude: float = 30, ray_max_length: int = None, jump: int = 1, show_progress: bool = True):
     """
     Compute rayshading for a DEM using a ray-casting algorithm.
 
@@ -295,7 +294,13 @@ for angle in [10, 20,30,40,50,60]:
 
 
 
-def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, case = None, override = True):
+def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, case = None, override = True, forBlender = False):
+
+    # Resolution control
+    if forBlender:
+        raster_resolution = 0.5   # or 1.0 if you prefer
+    else:
+        raster_resolution = 0.2
 
     codeBuilding = "1" if case=="BE" else "6"
 
@@ -321,7 +326,7 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
 
 
 
-    if override or not os.path.exists(output_folder + "slope_dsm.tif"):
+    if override or not os.path.exists(output_folder + "dsm.tif"):
 
         # prepare PDAL pipeline config
         print("pipeline DSM")
@@ -349,19 +354,21 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
             {
                 "type": "writers.gdal",
                 "filename": output_folder+"dsm_raw.tif",
-                "resolution": 0.2,
+                "resolution": raster_resolution,
                 "output_type": "max"
             }
         ])
 
         # execute PDAL pipeline
         with open("tmp/p_dsm.json", "w") as f: json.dump(data, f, indent=3)
+        print("DSM: PDAL pipeline started (this is the slow part)")
         run_command(["pdal", "pipeline", "tmp/p_dsm.json"])
+        print("DSM: PDAL pipeline finished")
 
         print("fill dsm no data")
         #TODO: should not be linear
         #TODO: smooth ?
-        run_command(["gdal_fillnodata.py", "-md", "20", "-of", "GTiff", output_folder+"dsm_raw.tif", output_folder+"dsm.tif"])
+        run_command(["gdal_fillnodata", "-md", "20", "-of", "GTiff", output_folder+"dsm_raw.tif", output_folder+"dsm.tif"])
         os.remove(output_folder+"dsm_raw.tif")
 
         #print("dsm hillshading")
@@ -374,7 +381,7 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
         #compress
         compress_tiff(output_folder+"slope_dsm.tif")
 
-    if override or not os.path.exists(output_folder + "shadow.tif"):
+    if not forBlender and (override or not os.path.exists(output_folder + "shadow.tif")):
         print("ray shading")
         compute_rayshading(output_folder+"dsm.tif", output_folder+"shadow.tif", light_altitude=15)
 
@@ -386,7 +393,7 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
         os.remove(output_folder+"dsm.tif")
 
 
-    if override or not os.path.exists(output_folder + "contours.gpkg"):
+    if override or not os.path.exists(output_folder + "dtm.tif"):
 
         # prepare PDAL pipeline config
         print("pipeline DTM")
@@ -401,7 +408,7 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
             #{
             #    "type": "writers.gdal",
             #    "filename": output_folder+"dtm_building.tif",
-            #    "resolution": 0.2,
+            #    "resolution": raster_resolution,
             #    "output_type": "min"
             #},
             {
@@ -418,7 +425,7 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
                 #keep min, 20 centimeter resolution
                 "type": "writers.gdal",
                 "filename": output_folder+"dtm_raw.tif",
-                "resolution": 0.2,
+                "resolution": raster_resolution,
                 "output_type": "min"
             }
         ])
@@ -438,7 +445,7 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
         #os.remove(output_folder+"dtm_building.tif")
 
         print("fill dtm no data")
-        run_command(["gdal_fillnodata.py", "-md", "50", "-of", "GTiff", output_folder+"dtm_raw.tif", output_folder+"dtm.tif"])
+        run_command(["gdal_fillnodata", "-md", "50", "-of", "GTiff", output_folder+"dtm_raw.tif", output_folder+"dtm.tif"])
         os.remove(output_folder+"dtm_raw.tif")
 
         print("smooth dtm")
@@ -448,12 +455,14 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
         #compress
         compress_tiff(output_folder+"dtm.tif")
 
-        print("make contours")
-        run_command(["gdal_contour", "-a", "elevation", "-i", "1", output_folder+"dtm_smoothed.tif", "-f", "GPKG", output_folder+"contours.gpkg"])
-        os.remove(output_folder+"dtm_smoothed.tif")
+        if not forBlender:
+            print("make contours")
+            run_command(["gdal_contour", "-a", "elevation", "-i", "1", output_folder+"dtm_smoothed.tif", "-f", "GPKG", output_folder+"contours.gpkg"])
 
-        print("set contours type")
-        contour_type_field(output_folder+"contours.gpkg", "contour")
+            print("set contours type")
+            contour_type_field(output_folder+"contours.gpkg", "contour")
+
+        os.remove(output_folder+"dtm_smoothed.tif")
 
     if override or not os.path.exists(output_folder + "vegetation_clean.tif"):
 
@@ -477,7 +486,7 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
             {
                 "type": "writers.gdal",
                 "filename": output_folder+"dsm_vegetation.tif",
-                "resolution": 0.2,
+                "resolution": raster_resolution,
                 "output_type": "max"
             },
 
@@ -491,7 +500,7 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
                 "filename": output_folder+"vegetation.tif",
                 "dimension": "Z",
                 "output_type": "max",
-                "resolution": 0.2
+                "resolution": raster_resolution
             }
         ])
 
@@ -533,7 +542,7 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
             {
                 "type": "writers.gdal",
                 "filename": output_folder+"dsm_building.tif",
-                "resolution": 0.2,
+                "resolution": raster_resolution,
                 "output_type": "max"
             },
             {
@@ -545,7 +554,7 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
                 "filename": output_folder+"building.tif",
                 "dimension": "Z",
                 "output_type": "max",
-                "resolution": 0.2
+                "resolution": raster_resolution
             }
         ])
 
@@ -564,11 +573,30 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
         os.remove(output_folder+"building.tif")
 
         print("vectorise")
-        run_command(["gdal_polygonize.py", "-overwrite", output_folder+"building_clean.tif", "-f", "GPKG", output_folder+"building.gpkg"])
+        run_command(["gdal_polygonize", "-overwrite", output_folder+"building_clean.tif", "-f", "GPKG", output_folder+"building.gpkg"])
         os.remove(output_folder+"building_clean.tif")
 
         print("simplify")
         run_command(["ogr2ogr", "-f", "GPKG", "-overwrite", output_folder+"building_simplified.gpkg", output_folder+"building.gpkg", "-simplify", "0.5"])
         os.remove(output_folder+"building.gpkg")
+            
+    if forBlender:
+        print("Exporting Blender-ready heightmap")
+
+        blender_height = output_folder + "dtm_height.png"
+
+        run_command([
+            "gdal_translate",
+            "-ot", "UInt16",
+            "-scale",
+            "-a_nodata", "none",
+            "-of", "PNG",
+            output_folder + "dtm.tif",
+            blender_height
+        ])
+
+
+
+
 
 
