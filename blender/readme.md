@@ -11,7 +11,7 @@ conda create -n cartohd python=3.11 -y
 conda activate cartohd
 
 
-You should now see:
+You should now see:c
 
 (cartohd)
 

@@ -324,8 +324,6 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
         return data
 
 
-
-
     if override or not os.path.exists(output_folder + "dsm.tif"):
 
         # prepare PDAL pipeline config

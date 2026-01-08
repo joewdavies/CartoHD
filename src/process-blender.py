@@ -1,7 +1,7 @@
 from cartoHD import run_command, cartoHDprocess
 import os
 
-BASE = "tmp/es/"
+BASE = "/tmp/"
 
 INPUT = BASE + "input/*.laz"
 OUTPUT = BASE + "output/"
