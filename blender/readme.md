@@ -2,6 +2,10 @@
 
 Blender needs images instead of GeoTiffs, so we adjust the process a bit.
 
+Put your lidar files in /tmp/inputs
+
+For Spain download them here: https://centrodedescargas.cnig.es/CentroDescargas/lidar-tercera-cobertura
+
 Here are the exact Anaconda / Conda commands, in the correct order, for CartoHD + Blender export on Windows.
 
 1️⃣ Create the environment  
