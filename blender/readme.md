@@ -2,21 +2,24 @@
 
 Blender needs images instead of GeoTiffs, so we adjust the process a bit.
 
+Put your lidar files in /tmp/inputs
+
+For Spain download them here: https://centrodedescargas.cnig.es/CentroDescargas/lidar-tercera-cobertura
+
 Here are the exact Anaconda / Conda commands, in the correct order, for CartoHD + Blender export on Windows.
 
-1️⃣ Create the environment
-conda create -n cartohd python=3.11 -y
+1️⃣ Create the environment  
+`conda create -n cartohd python=3.11 -y`
 
-2️⃣ Activate it
-conda activate cartohd
+2️⃣ Activate it  
+`conda activate cartohd`
 
-
-You should now see:c
+You should now see:
 
 (cartohd)
 
-3️⃣ Install core geo stack (CRITICAL: conda-forge)
-conda install -c conda-forge -y ^
+3️⃣ Install core geo stack (CRITICAL: conda-forge)  
+`conda install -c conda-forge -y ^
   gdal ^
   pdal ^
   numpy ^
@@ -25,23 +28,23 @@ conda install -c conda-forge -y ^
   geopandas ^
   shapely ^
   fiona ^
-  pyproj
+  pyproj`
 
 
 ⚠️ Do not use pip for GDAL / Fiona / Rasterio on Windows
 
-4️⃣ Verify binaries (important sanity check)
-gdalinfo --version
-pdal --version
+4️⃣ Verify binaries (important sanity check)  
+`gdalinfo --version
+pdal --version`
 
 
 Both must print versions (no errors).
 
 5️⃣ Run CartoHD
 
-From the CartoHD root folder:
+From the CartoHD root folder:  
 
-python src\process-blender.py
+`python src\process-blender.py`
 
 6️⃣ (Optional) Blender-only reruns
 
@@ -55,15 +58,15 @@ in process-blender.py.
 
 7️⃣ (Optional) Export again manually
 
-If you ever need to re-export the heightmap:
+If you ever need to re-export the heightmap:  
 
-gdal_translate ^
+`gdal_translate ^
   -ot UInt16 ^
   -scale ^
   -a_nodata none ^
   -of PNG ^
   tmp\es\output\dtm.tif ^
-  tmp\es\output\dtm_height.png
+  tmp\es\output\dtm_height.png`
 
 TL;DR
 conda create -n cartohd python=3.11 -y
