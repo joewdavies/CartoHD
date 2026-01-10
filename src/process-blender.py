@@ -1,7 +1,7 @@
 from cartoHD import run_command, cartoHDprocess
 import os
 
-BASE = "/tmp/"
+BASE = "../tmp/"
 
 INPUT = BASE + "input/*.laz"
 OUTPUT = BASE + "output/"
@@ -14,6 +14,6 @@ cartoHDprocess(
     bounds=None,      # use full tiles
     margin=0,
     case="ES",        # Spain (building class = 6)
-    override=True,
+    override=False,
     forBlender=True
 )

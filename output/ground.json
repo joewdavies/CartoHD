@@ -1,0 +1,25 @@
+[
+  {
+    "type": "readers.las",
+    "filename": "..\\tmp\\input\\*.laz"
+  },
+  {
+    "type": "filters.range",
+    "limits": "Classification[2:2]"
+  },
+  {
+    "type": "filters.decimation",
+    "step": 2
+  },
+  {
+    "type": "filters.center"
+  },
+  {
+    "type": "filters.poisson",
+    "depth": 9
+  },
+  {
+    "type": "writers.ply",
+    "filename": "C:\\Github\\CartoHD\\output\\ground_mesh.ply"
+  }
+]

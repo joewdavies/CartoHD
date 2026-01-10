@@ -379,7 +379,7 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
         #compress
         compress_tiff(output_folder+"slope_dsm.tif")
 
-    if not forBlender and (override or not os.path.exists(output_folder + "shadow.tif")):
+    if (override or not os.path.exists(output_folder + "shadow.tif")):
         print("ray shading")
         compute_rayshading(output_folder+"dsm.tif", output_folder+"shadow.tif", light_altitude=15)
 
@@ -579,17 +579,29 @@ def cartoHDprocess(input_lidar_data, output_folder, bounds = None, margin = 0, c
         os.remove(output_folder+"building.gpkg")
             
     if forBlender:
+        import subprocess
+        import re
+
         print("Exporting Blender-ready heightmap")
 
+        dtm_path = output_folder + "dtm.tif"
         blender_height = output_folder + "dtm_height.png"
+
+        info = subprocess.check_output(
+            ["gdalinfo", "-stats", dtm_path],
+            text=True
+        )
+
+        zmin = float(re.search(r"STATISTICS_MINIMUM=([0-9\.\-]+)", info).group(1))
+        zmax = float(re.search(r"STATISTICS_MAXIMUM=([0-9\.\-]+)", info).group(1))
 
         run_command([
             "gdal_translate",
             "-ot", "UInt16",
-            "-scale",
+            "-scale", str(zmin), str(zmax), "0", "50000",
             "-a_nodata", "none",
             "-of", "PNG",
-            output_folder + "dtm.tif",
+            dtm_path,
             blender_height
         ])
 
